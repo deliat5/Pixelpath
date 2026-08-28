@@ -1,0 +1,24 @@
+{
+  "name": "pixelpath-backend",
+  "version": "1.0.0",
+  "description": "Backend for gamified task tracker thesis project - Express + Prisma + PostgreSQL",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "node src/index.js",
+    "start": "node src/index.js",
+    "demo": "node src/algorithms/demo.js",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "@prisma/client": "^5.18.0",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "prisma": "^5.18.0"
+  }
+}

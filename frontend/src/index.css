@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.font-pixel {
+  font-family: "Press Start 2P", monospace;
+}
+
+body {
+  background-color: #e9def5;
+}
+
+.dark body {
+  background-color: #1e1233;
+}

@@ -1,0 +1,100 @@
+// Prisma schema for the gamified task tracker
+// Database: PostgreSQL (hosted, e.g. Neon) - switched from SQLite because
+// most hosting platforms wipe on-disk files on every redeploy/restart,
+// which would silently delete all user data. Locally, you can still point
+// DATABASE_URL at a local Postgres if you want, or keep using a hosted
+// free-tier instance even for development - either works the same way.
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Real multi-user auth (justified now that the app is meant to be publicly
+// hosted, not just a local single-user demo - see conversation notes).
+// Password is stored as a bcrypt hash, never in plain text.
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  projects Project[]
+}
+
+// A user can have several independent projects (e.g. "Garden renovation",
+// "Room renovation"). Each project has its OWN character and its own pool
+// of earned rewards - deliberately not shared across a user's projects,
+// so progress/collectibles in one project don't leak into another.
+model Project {
+  id        Int      @id @default(autoincrement())
+  name      String
+  tasks     Task[]
+  createdAt DateTime @default(now())
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+
+  // "gender-skinTone-hairColor", e.g. "boy-medium-red" - see frontend/src/skins.js
+  equippedCharacter String @default("boy-light-blonde")
+  // Key of the currently worn accessory (from ProjectReward.itemKey), or
+  // null if nothing is equipped. Must be one the project has actually won.
+  equippedRewardKey String?
+
+  rewards ProjectReward[]
+}
+
+// One row per item a project has won. `type` distinguishes the two
+// independent reward tracks: "object" (accessory items, earned via the
+// points system - see gameStats.js) and "skin" (bonus characters, earned
+// every 5 days of streak - see dailyGoal.js). Granted server-side (see
+// services/rewards.js), randomly, without repeating within the same
+// project until every item in that track's pool has been won at least once.
+model ProjectReward {
+  id        Int      @id @default(autoincrement())
+  projectId Int
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type      String   @default("object") // "object" | "skin"
+  itemKey   String   // matches an id in frontend/src/outfits.js (object) or frontend/src/skins.js special pool (skin)
+  wonAt     DateTime @default(now())
+}
+
+model Task {
+  id        Int      @id @default(autoincrement())
+  title     String
+  duration  Int      // estimated duration, in days (used by CPM)
+  status    String   @default("todo") // "todo" | "in_progress" | "done"
+  completedAt DateTime? // set when status becomes "done", cleared otherwise - drives streak calculation
+
+  // Optional user-chosen "not before" constraint (a real calendar date).
+  // CPM's forward pass takes the MAX of this and the dependency-derived
+  // earliest start - so a task can be pushed later by this, but
+  // dependencies can still push it later still if they require it. This
+  // is a standard CPM/PERT extension ("ready date" / resource-availability
+  // constraint), not an override of the algorithm.
+  notBeforeDate DateTime?
+
+  projectId Int
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  // Self-referencing many-to-many relation = the dependency graph (DAG).
+  // "dependencies" = tasks that must be finished BEFORE this one can start.
+  // "dependents"   = tasks that depend on this one (the reverse edges).
+  dependencies Task[] @relation("TaskDependencies")
+  dependents   Task[] @relation("TaskDependencies")
+
+  // Fields computed by the CPM algorithm (cpm.js) and cached here
+  // so the frontend doesn't have to recompute the whole graph on every request.
+  earliestStart  Int?
+  earliestFinish Int?
+  latestStart    Int?
+  latestFinish   Int?
+  slack          Int?
+  isCritical     Boolean @default(false)
+
+  createdAt DateTime @default(now())
+}
