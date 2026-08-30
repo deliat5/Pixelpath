@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Modal from "./Modal";
 import TaskForm from "./TaskForm";
 import TaskEditForm from "./TaskEditForm";
@@ -56,6 +56,21 @@ export default function CalendarView({ tasks, startDate, onAddTask, onComplete, 
     tasksForDay,
   }));
 
+  const scrollRef = useRef(null);
+
+  // Scroll to "today"'s column whenever it's known - both on first load
+  // and if a different project (with a different anchor date) loads in.
+  // Without this, the calendar always opens scrolled to its leftmost day
+  // (the project's start date), which can be many days before today.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const dayEl = el.children[todayOffset];
+    if (dayEl) {
+      el.scrollTo({ left: dayEl.offsetLeft - 12, behavior: "smooth" });
+    }
+  }, [todayOffset]);
+
   function handleAdd(data) {
     onAddTask(data);
     setModalOpen(false);
@@ -75,7 +90,7 @@ export default function CalendarView({ tasks, startDate, onAddTask, onComplete, 
     <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm">
       <p className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-3">{t("calendarTitle")}</p>
 
-      <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
+      <div ref={scrollRef} className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
         {days.map((day) => (
           <div
             key={day.offset}
