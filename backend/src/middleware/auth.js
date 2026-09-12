@@ -1,9 +1,10 @@
 const jwt = require("jsonwebtoken");
 
-// In a real deployment, JWT_SECRET MUST come from an environment variable,
-// not this fallback - the fallback exists only so local development works
-// without extra setup. Document this clearly if/when actually hosting publicly.
-const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-before-hosting-publicly";
+
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET environment variable is not set. Set it before starting the server.");
+}
 
 function authMiddleware(req, res, next) {
   const header = req.headers.authorization;
